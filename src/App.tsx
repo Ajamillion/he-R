@@ -9,6 +9,7 @@ import { MicrocopyCard } from './features/MicrocopyCard';
 import { NotesCard } from './features/NotesCard';
 import { PegTitrationCard } from './features/PegTitrationCard';
 import { RiskAndPolicyCard } from './features/RiskAndPolicyCard';
+import { LabRemindersCard } from './features/LabRemindersCard';
 import { SleepHygieneCard } from './features/SleepHygieneCard';
 import { SpacingRulesCard } from './features/SpacingRulesCard';
 import { StagingMapCard } from './features/StagingMapCard';
@@ -69,6 +70,7 @@ function App() {
         <NotesCard date={selectedDate} />
         <MedicationLibraryCard />
         <RiskAndPolicyCard />
+        <LabRemindersCard />
         <StagingMapCard />
         <SleepHygieneCard />
         <MicrocopyCard />

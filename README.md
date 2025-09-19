@@ -9,6 +9,7 @@ A Vite + React TypeScript starter that turns the hepatic encephalopathy truth so
 - **Trend insights** – Seven-day hydration, stool, and medication summaries surface wins and gaps automatically.
 - **Shareable export** – Copy or download a JSON snapshot or spreadsheet CSV for caregivers, clinicians, or backups.
 - **Precipitating factor tracker** – Toggle hepatic encephalopathy triggers and capture timestamped notes for the team.
+- **Lab cadence tracker** – Record the most recent labs, surface the next draw window, and follow electrolyte actions at a glance.
 - **Mobile-first layout** – Responsive cards and inputs tuned for touch, with a PWA manifest and gradient theming for at-a-glance clarity.
 - **Cloud sync façade** – A sync banner simulates connectivity states and can be wired to a real backend or serverless function later.
 - **Local persistence hook** – State is saved in `localStorage` so the experience survives refreshes while offline.

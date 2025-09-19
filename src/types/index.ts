@@ -37,6 +37,7 @@ export type PlanProfile = {
   weightKg: number;
   hydrationGoalOz: number;
   regionFlags: Record<string, boolean>;
+  lastLabDate?: string;
 };
 
 export type PrecipitatingFactorState = {

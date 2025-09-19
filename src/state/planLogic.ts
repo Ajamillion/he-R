@@ -6,6 +6,7 @@ import type {
   PlanProfile,
   PrecipitatingFactorMap
 } from '../types';
+import { differenceInDays, isValidDateInput, shiftDate } from '../utils/date';
 
 const normalizeName = (value: string) => value.toLowerCase();
 
@@ -228,6 +229,7 @@ export type PlanExportSnapshot = {
   profile: PlanProfile;
   pegCaps: number;
   lastSyncedAt?: string;
+  labCadenceWeeks: number;
   precipitatingFactors: {
     name: string;
     active: boolean;
@@ -255,6 +257,7 @@ type PlanExportOptions = {
   lastSyncedAt?: string;
   truthVersion: string;
   factors: PrecipitatingFactorMap;
+  labCadenceWeeks: number;
   now?: Date;
 };
 
@@ -270,6 +273,7 @@ export const buildPlanExportSnapshot = ({
   lastSyncedAt,
   truthVersion,
   factors,
+  labCadenceWeeks,
   now = new Date()
 }: PlanExportOptions): PlanExportSnapshot => {
   const sanitizedLogs = logs
@@ -298,16 +302,23 @@ export const buildPlanExportSnapshot = ({
     { hydrationEntries: 0, stoolEntries: 0, medicationEntries: 0 }
   );
 
+  const sanitizedProfile: PlanProfile = {
+    weightKg: profile.weightKg,
+    hydrationGoalOz: profile.hydrationGoalOz,
+    regionFlags: { ...profile.regionFlags }
+  };
+
+  if (isValidDateInput(profile.lastLabDate)) {
+    sanitizedProfile.lastLabDate = profile.lastLabDate;
+  }
+
   return {
     generatedAt: now.toISOString(),
     truthVersion,
-    profile: {
-      weightKg: profile.weightKg,
-      hydrationGoalOz: profile.hydrationGoalOz,
-      regionFlags: { ...profile.regionFlags }
-    },
+    profile: sanitizedProfile,
     pegCaps,
     lastSyncedAt,
+    labCadenceWeeks,
     precipitatingFactors: Object.entries(factors)
       .map(([name, state]) => ({
         name,
@@ -354,6 +365,25 @@ export const buildPlanExportCsv = (snapshot: PlanExportSnapshot): string => {
   rows.push(['PEG 3350 caps', snapshot.pegCaps.toString(), '', '', '']);
   rows.push(['Body weight (kg)', snapshot.profile.weightKg.toString(), '', '', '']);
   rows.push(['Hydration goal (oz)', snapshot.profile.hydrationGoalOz.toString(), '', '', '']);
+  rows.push(['Lab cadence (weeks)', snapshot.labCadenceWeeks.toString(), '', '', '']);
+  const lastLabsRecorded = snapshot.profile.lastLabDate ?? 'Not recorded';
+  rows.push(['Last labs recorded', lastLabsRecorded, '', '', '']);
+  if (isValidDateInput(snapshot.profile.lastLabDate)) {
+    const nextLabDate = shiftDate(snapshot.profile.lastLabDate, snapshot.labCadenceWeeks * 7);
+    rows.push(['Next labs due', nextLabDate, '', '', '']);
+    const generatedDate = snapshot.generatedAt.split('T')[0] ?? '';
+    if (isValidDateInput(generatedDate)) {
+      const delta = differenceInDays(generatedDate, nextLabDate);
+      let label = 'Due today';
+      if (delta > 0) {
+        label = `Due in ${delta} day${delta === 1 ? '' : 's'}`;
+      } else if (delta < 0) {
+        const overdue = Math.abs(delta);
+        label = `Overdue by ${overdue} day${overdue === 1 ? '' : 's'}`;
+      }
+      rows.push(['Lab timing status', label, '', '', '']);
+    }
+  }
   rows.push(['Region flags enabled', regionSummary, '', '', '']);
   rows.push(['Active precipitating factors', activeFactorSummary, '', '', '']);
   rows.push(['Factors with notes', notedFactors.length.toString(), '', '', '']);

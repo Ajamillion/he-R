@@ -262,6 +262,26 @@ select {
   font-weight: 500;
 }
 
+.badge--neutral {
+  background-color: rgba(69, 123, 157, 0.12);
+  color: var(--accent-strong);
+}
+
+.badge--positive {
+  background-color: rgba(56, 142, 60, 0.18);
+  color: #2f7d32;
+}
+
+.badge--warning {
+  background-color: rgba(233, 116, 81, 0.2);
+  color: #c05621;
+}
+
+.badge--danger {
+  background-color: rgba(214, 40, 57, 0.18);
+  color: #9b1c1c;
+}
+
 .button {
   border: none;
   border-radius: 999px;
@@ -311,6 +331,12 @@ select {
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .export-status {

@@ -7,9 +7,22 @@ const toInputValue = (date: Date) => {
 
 const toDate = (value: string) => new Date(`${value}T00:00:00`);
 
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
 export const toDateInputValue = (date: Date) => toInputValue(date);
 
 export const todayInputValue = () => toInputValue(new Date());
+
+export const isValidDateInput = (value: unknown): value is string => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+  const date = toDate(value);
+  return !Number.isNaN(date.getTime()) && toInputValue(date) === value;
+};
 
 export const shiftDate = (value: string, deltaDays: number) => {
   const date = toDate(value);
@@ -52,4 +65,10 @@ export const formatDateTimeFriendly = (value: string) => {
     hour: 'numeric',
     minute: '2-digit'
   });
+};
+
+export const differenceInDays = (from: string, to: string) => {
+  const start = toDate(from);
+  const end = toDate(to);
+  return Math.round((end.getTime() - start.getTime()) / MS_PER_DAY);
 };

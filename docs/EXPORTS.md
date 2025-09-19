@@ -16,9 +16,10 @@ for backups, care-team handoffs, and eventual cloud synchronization. Every field
 | --- | --- |
 | `generatedAt` | ISO timestamp when the snapshot was created. |
 | `truthVersion` | Version string from the hepatic encephalopathy truth source. |
-| `profile` | Current profile settings (`weightKg`, `hydrationGoalOz`, and `regionFlags`). |
+| `profile` | Current profile settings (`weightKg`, `hydrationGoalOz`, `regionFlags`, and optional `lastLabDate`). |
 | `pegCaps` | Current PEG 3350 capsule setting used by the titration helper. |
 | `lastSyncedAt` | Timestamp of the most recent cloud sync (if any). |
+| `labCadenceWeeks` | Lab cadence in weeks sourced from the truth file. |
 | `precipitatingFactors` | Array capturing the status, notes, and last update per precipitating factor. |
 | `totals` | Counts of hydration, stool, and medication entries across the snapshot. |
 | `logs` | Array of sanitized daily logs ordered chronologically. |
@@ -59,11 +60,15 @@ The first block of rows provides context that would otherwise live outside the s
 4. `PEG 3350 caps` – Current PEG titration setting.
 5. `Body weight (kg)` – Weight used for protein calculations.
 6. `Hydration goal (oz)` – Personalized hydration target.
-7. `Region flags enabled` – Semicolon-delimited list of enabled regional availability flags (`None` when all are disabled).
-8. `Active precipitating factors` – Semicolon-delimited list of currently active triggers (`None` when all are clear).
-9. `Factors with notes` – Count of factors carrying caregiver notes.
+7. `Lab cadence (weeks)` – Interval derived from the truth source.
+8. `Last labs recorded` – ISO date of the most recent comprehensive panel (`Not recorded` when unset).
+9. `Next labs due` – Populated when a last lab date exists; computed from cadence.
+10. `Lab timing status` – Friendly status (`Due today`, `Due in X days`, or `Overdue by X days`) when the next due date is known.
+11. `Region flags enabled` – Semicolon-delimited list of enabled regional availability flags (`None` when all are disabled).
+12. `Active precipitating factors` – Semicolon-delimited list of currently active triggers (`None` when all are clear).
+13. `Factors with notes` – Count of factors carrying caregiver notes.
 
-All metadata rows pad remaining columns with empty values to keep a consistent 5-column layout.
+Rows for `Next labs due` and `Lab timing status` only appear when the caregiver has captured a last lab date. All metadata rows pad remaining columns with empty values to keep a consistent 5-column layout.
 
 ### Factor tracker table
 

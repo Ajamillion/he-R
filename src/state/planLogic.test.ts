@@ -125,7 +125,8 @@ describe('buildPlanExportSnapshot', () => {
       hydrationGoalOz: 60,
       regionFlags: Object.fromEntries(
         truthSource.region_flags.map((flag) => [flag, flag === 'rifaximin_available'])
-      )
+      ),
+      lastLabDate: '2025-09-18'
     };
 
     const factors: PrecipitatingFactorMap = {
@@ -140,6 +141,7 @@ describe('buildPlanExportSnapshot', () => {
       lastSyncedAt: '2025-09-19T08:00:00Z',
       truthVersion: truthSource.version,
       factors,
+      labCadenceWeeks: truthSource.lab_cadence.weeks,
       now: new Date('2025-09-20T00:00:00Z')
     });
 
@@ -153,6 +155,8 @@ describe('buildPlanExportSnapshot', () => {
     expect(snapshot.logs[1].hydration[1]).toEqual({ time: '13:00', ounces: 10 });
     expect(snapshot.totals).toEqual({ hydrationEntries: 3, stoolEntries: 1, medicationEntries: 1 });
     expect(snapshot.profile.regionFlags).not.toBe(profile.regionFlags);
+    expect(snapshot.profile.lastLabDate).toBe('2025-09-18');
+    expect(snapshot.labCadenceWeeks).toBe(truthSource.lab_cadence.weeks);
     expect(snapshot.precipitatingFactors).toEqual([
       { name: 'dehydration', active: false },
       { name: 'infection', active: true, note: 'Fever 101°F', updatedAt: '2025-09-19T10:00:00Z' }
@@ -171,7 +175,8 @@ describe('buildPlanExportCsv', () => {
     const profile: PlanProfile = {
       weightKg: 68,
       hydrationGoalOz: 56,
-      regionFlags: Object.fromEntries(truthSource.region_flags.map((flag) => [flag, false]))
+      regionFlags: Object.fromEntries(truthSource.region_flags.map((flag) => [flag, false])),
+      lastLabDate: '2025-09-20'
     };
 
     const factors: PrecipitatingFactorMap = {
@@ -185,6 +190,7 @@ describe('buildPlanExportCsv', () => {
       lastSyncedAt: undefined,
       truthVersion: truthSource.version,
       factors,
+      labCadenceWeeks: truthSource.lab_cadence.weeks,
       now: new Date('2025-09-20T00:00:00Z')
     });
 
@@ -199,6 +205,14 @@ describe('buildPlanExportCsv', () => {
     expect(notesLine).toBe('2025-09-18,,Notes,Care note,"Focus, steady intake"');
     const regionLine = lines.find((line) => line.startsWith('Region flags enabled'));
     expect(regionLine?.startsWith('Region flags enabled,None')).toBe(true);
+    const cadenceLine = lines.find((line) => line.startsWith('Lab cadence (weeks)'));
+    expect(cadenceLine).toBe('Lab cadence (weeks),8,,,,');
+    const lastLabsLine = lines.find((line) => line.startsWith('Last labs recorded'));
+    expect(lastLabsLine).toBe('Last labs recorded,2025-09-20,,,,');
+    const nextLabsLine = lines.find((line) => line.startsWith('Next labs due'));
+    expect(nextLabsLine).toBe('Next labs due,2025-11-15,,,,');
+    const statusLine = lines.find((line) => line.startsWith('Lab timing status'));
+    expect(statusLine).toBe('Lab timing status,Due in 56 days,,,,');
     const factorHeader = lines.findIndex((line) => line === 'Precipitating factor,Status,Last updated,Notes,');
     expect(factorHeader).toBeGreaterThan(-1);
     expect(lines[factorHeader + 1]).toContain('infection,Active,2025-09-18T09:00:00Z,Antibiotics started,');

@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { truthSource } from '../data/truthSource';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { isValidDateInput } from '../utils/date';
 import type {
   CloudSyncState,
   DailyLog,
@@ -37,7 +38,8 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 const createDefaultProfile = (): PlanProfile => ({
   weightKg: 70,
   hydrationGoalOz: truthSource.targets.hydration_oz_day.default,
-  regionFlags: Object.fromEntries(truthSource.region_flags.map((flag) => [flag, false]))
+  regionFlags: Object.fromEntries(truthSource.region_flags.map((flag) => [flag, false])),
+  lastLabDate: undefined
 });
 
 const mergeProfile = (profile?: PlanProfile): PlanProfile => {
@@ -58,18 +60,28 @@ const mergeProfile = (profile?: PlanProfile): PlanProfile => {
     )
   };
 
+  const incomingLabDate = typeof profile.lastLabDate === 'string' ? profile.lastLabDate : undefined;
+  const sanitizedLabDate = isValidDateInput(incomingLabDate) ? incomingLabDate : undefined;
+
   const regionChanged = Object.keys(normalizedFlags).some(
     (flag) => normalizedFlags[flag] !== (profile.regionFlags ?? {})[flag]
   );
+  const labDateChanged = sanitizedLabDate !== incomingLabDate;
 
-  if (!regionChanged && weightKg === profile.weightKg && hydrationGoalOz === profile.hydrationGoalOz) {
+  if (
+    !regionChanged &&
+    !labDateChanged &&
+    weightKg === profile.weightKg &&
+    hydrationGoalOz === profile.hydrationGoalOz
+  ) {
     return profile;
   }
 
   return {
     weightKg,
     hydrationGoalOz,
-    regionFlags: normalizedFlags
+    regionFlags: normalizedFlags,
+    lastLabDate: sanitizedLabDate
   };
 };
 
@@ -151,6 +163,7 @@ type PlanContextValue = {
   profile: PlanProfile;
   setWeightKg: (value: number) => void;
   setHydrationGoalOz: (value: number) => void;
+  setLastLabDate: (value: string | undefined) => void;
   setRegionFlag: (flag: string, enabled: boolean) => void;
   factors: PrecipitatingFactorMap;
   setFactorActive: (factor: string, active: boolean) => void;
@@ -442,6 +455,45 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     [setStorage]
   );
 
+  const setLastLabDate = useCallback<PlanContextValue['setLastLabDate']>(
+    (value) => {
+      setStorage((prev) => {
+        const normalizedProfile = mergeProfile(prev.profile);
+        const normalizedFactors = mergeFactors(prev.factors);
+
+        let sanitized: string | undefined;
+        if (typeof value === 'string') {
+          if (!isValidDateInput(value)) {
+            if (prev.profile === normalizedProfile && prev.factors === normalizedFactors) {
+              return prev;
+            }
+            return { ...prev, profile: normalizedProfile, factors: normalizedFactors };
+          }
+          sanitized = value;
+        } else {
+          sanitized = undefined;
+        }
+
+        if (normalizedProfile.lastLabDate === sanitized) {
+          if (prev.profile === normalizedProfile && prev.factors === normalizedFactors) {
+            return prev;
+          }
+          return { ...prev, profile: normalizedProfile, factors: normalizedFactors };
+        }
+
+        const nextProfile: PlanProfile = { ...normalizedProfile };
+        if (sanitized) {
+          nextProfile.lastLabDate = sanitized;
+        } else {
+          delete nextProfile.lastLabDate;
+        }
+
+        return { ...prev, profile: nextProfile, factors: normalizedFactors };
+      });
+    },
+    [setStorage]
+  );
+
   const setRegionFlag = useCallback<PlanContextValue['setRegionFlag']>(
     (flag, enabled) => {
       setStorage((prev) => {
@@ -576,6 +628,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       profile,
       setWeightKg,
       setHydrationGoalOz,
+      setLastLabDate,
       setRegionFlag,
       factors,
       setFactorActive,
@@ -601,6 +654,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       profile,
       setWeightKg,
       setHydrationGoalOz,
+      setLastLabDate,
       setRegionFlag,
       factors,
       setFactorActive,

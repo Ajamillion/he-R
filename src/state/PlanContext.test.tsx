@@ -88,3 +88,31 @@ describe('PlanProvider precipitating factor tracker', () => {
     }
   });
 });
+
+describe('PlanProvider lab cadence tracking', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('persists valid lab dates and ignores invalid updates', () => {
+    const { result } = renderHook(() => usePlan(), { wrapper });
+
+    act(() => {
+      result.current.setLastLabDate('2025-09-18');
+    });
+
+    expect(result.current.profile.lastLabDate).toBe('2025-09-18');
+
+    act(() => {
+      result.current.setLastLabDate('2025-02-30');
+    });
+
+    expect(result.current.profile.lastLabDate).toBe('2025-09-18');
+
+    act(() => {
+      result.current.setLastLabDate(undefined);
+    });
+
+    expect(result.current.profile.lastLabDate).toBeUndefined();
+  });
+});

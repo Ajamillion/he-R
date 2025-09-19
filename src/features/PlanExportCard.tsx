@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/Card';
 import { usePlan } from '../state/PlanContext';
 import { buildPlanExportCsv, buildPlanExportSnapshot } from '../state/planLogic';
-import { formatDateFriendly } from '../utils/date';
+import { differenceInDays, formatDateFriendly, isValidDateInput, shiftDate } from '../utils/date';
+
+const formatDays = (value: number) => `${value} day${value === 1 ? '' : 's'}`;
 
 type PlanExportCardProps = {
   date: string;
@@ -22,9 +24,10 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
         pegCaps,
         lastSyncedAt,
         truthVersion: truth.version,
-        factors
+        factors,
+        labCadenceWeeks: truth.lab_cadence.weeks
       }),
-    [logs, profile, pegCaps, lastSyncedAt, truth.version, factors]
+    [logs, profile, pegCaps, lastSyncedAt, truth.version, truth.lab_cadence.weeks, factors]
   );
 
   const exportJson = useMemo(() => JSON.stringify(snapshot, null, 2), [snapshot]);
@@ -101,6 +104,35 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
 
   const activeFactorCount = snapshot.precipitatingFactors.filter((factor) => factor.active).length;
   const noteCount = snapshot.precipitatingFactors.filter((factor) => factor.note).length;
+  const lastLabsFriendly = snapshot.profile.lastLabDate
+    ? formatDateFriendly(snapshot.profile.lastLabDate)
+    : 'Not recorded';
+  const nextLabsDate = snapshot.profile.lastLabDate
+    ? shiftDate(snapshot.profile.lastLabDate, snapshot.labCadenceWeeks * 7)
+    : undefined;
+  const generatedDate = snapshot.generatedAt.split('T')[0] ?? '';
+  let labBadgeLabel = `Cadence ${snapshot.labCadenceWeeks} wk`;
+  let labBadgeClass = 'badge badge--neutral';
+  if (!snapshot.profile.lastLabDate) {
+    labBadgeLabel = 'Record last labs';
+  }
+  if (nextLabsDate && isValidDateInput(generatedDate)) {
+    const delta = differenceInDays(generatedDate, nextLabsDate);
+    if (delta > 7) {
+      labBadgeLabel = `Due in ${formatDays(delta)}`;
+      labBadgeClass = 'badge badge--positive';
+    } else if (delta > 0) {
+      labBadgeLabel = `Due in ${formatDays(delta)}`;
+      labBadgeClass = 'badge badge--warning';
+    } else if (delta === 0) {
+      labBadgeLabel = 'Due today';
+      labBadgeClass = 'badge badge--warning';
+    } else {
+      const overdue = Math.abs(delta);
+      labBadgeLabel = `Overdue by ${formatDays(overdue)}`;
+      labBadgeClass = 'badge badge--danger';
+    }
+  }
 
   return (
     <Card title="Plan export" tag="Share or archive" className="span-4">
@@ -126,6 +158,11 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
           <span className="stat-card__label">Active triggers</span>
           <span className="stat-card__value">{activeFactorCount}</span>
           <span className="badge">{noteCount > 0 ? `${noteCount} noted` : 'No notes yet'}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-card__label">Labs</span>
+          <span className="stat-card__value">{lastLabsFriendly}</span>
+          <span className={labBadgeClass}>{labBadgeLabel}</span>
         </div>
       </div>
       <div className="export-actions">
