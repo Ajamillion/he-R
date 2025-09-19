@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { truthSource } from '../data/truthSource';
-import type { PlanProfile } from '../types';
+import type { PlanProfile, PrecipitatingFactorMap } from '../types';
 import {
   createEmptyLog,
   computeTitration,
@@ -128,12 +128,18 @@ describe('buildPlanExportSnapshot', () => {
       )
     };
 
+    const factors: PrecipitatingFactorMap = {
+      infection: { active: true, note: 'Fever 101°F', updatedAt: '2025-09-19T10:00:00Z' },
+      dehydration: { active: false, note: '', updatedAt: undefined }
+    };
+
     const snapshot = buildPlanExportSnapshot({
       logs: [later, earlier],
       profile,
       pegCaps: 0.75,
       lastSyncedAt: '2025-09-19T08:00:00Z',
       truthVersion: truthSource.version,
+      factors,
       now: new Date('2025-09-20T00:00:00Z')
     });
 
@@ -147,6 +153,10 @@ describe('buildPlanExportSnapshot', () => {
     expect(snapshot.logs[1].hydration[1]).toEqual({ time: '13:00', ounces: 10 });
     expect(snapshot.totals).toEqual({ hydrationEntries: 3, stoolEntries: 1, medicationEntries: 1 });
     expect(snapshot.profile.regionFlags).not.toBe(profile.regionFlags);
+    expect(snapshot.precipitatingFactors).toEqual([
+      { name: 'dehydration', active: false },
+      { name: 'infection', active: true, note: 'Fever 101°F', updatedAt: '2025-09-19T10:00:00Z' }
+    ]);
   });
 });
 
@@ -164,12 +174,17 @@ describe('buildPlanExportCsv', () => {
       regionFlags: Object.fromEntries(truthSource.region_flags.map((flag) => [flag, false]))
     };
 
+    const factors: PrecipitatingFactorMap = {
+      infection: { active: true, note: 'Antibiotics started', updatedAt: '2025-09-18T09:00:00Z' }
+    };
+
     const snapshot = buildPlanExportSnapshot({
       logs: [log],
       profile,
       pegCaps: 0.75,
       lastSyncedAt: undefined,
       truthVersion: truthSource.version,
+      factors,
       now: new Date('2025-09-20T00:00:00Z')
     });
 
@@ -184,5 +199,8 @@ describe('buildPlanExportCsv', () => {
     expect(notesLine).toBe('2025-09-18,,Notes,Care note,"Focus, steady intake"');
     const regionLine = lines.find((line) => line.startsWith('Region flags enabled'));
     expect(regionLine?.startsWith('Region flags enabled,None')).toBe(true);
+    const factorHeader = lines.findIndex((line) => line === 'Precipitating factor,Status,Last updated,Notes,');
+    expect(factorHeader).toBeGreaterThan(-1);
+    expect(lines[factorHeader + 1]).toContain('infection,Active,2025-09-18T09:00:00Z,Antibiotics started,');
   });
 });

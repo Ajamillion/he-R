@@ -11,7 +11,7 @@ type PlanExportCardProps = {
 type ExportStatus = 'idle' | 'copied-json' | 'downloaded-json' | 'downloaded-csv' | 'error';
 
 export const PlanExportCard = ({ date }: PlanExportCardProps) => {
-  const { logs, profile, pegCaps, lastSyncedAt, truth } = usePlan();
+  const { logs, profile, pegCaps, lastSyncedAt, truth, factors } = usePlan();
   const [status, setStatus] = useState<ExportStatus>('idle');
 
   const snapshot = useMemo(
@@ -21,9 +21,10 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
         profile,
         pegCaps,
         lastSyncedAt,
-        truthVersion: truth.version
+        truthVersion: truth.version,
+        factors
       }),
-    [logs, profile, pegCaps, lastSyncedAt, truth.version]
+    [logs, profile, pegCaps, lastSyncedAt, truth.version, factors]
   );
 
   const exportJson = useMemo(() => JSON.stringify(snapshot, null, 2), [snapshot]);
@@ -98,6 +99,9 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
 
   const lastSyncedFriendly = lastSyncedAt ? formatDateFriendly(lastSyncedAt.slice(0, 10)) : undefined;
 
+  const activeFactorCount = snapshot.precipitatingFactors.filter((factor) => factor.active).length;
+  const noteCount = snapshot.precipitatingFactors.filter((factor) => factor.note).length;
+
   return (
     <Card title="Plan export" tag="Share or archive" className="span-4">
       <p className="helper-text">
@@ -117,6 +121,11 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
         <div className="stat-card">
           <span className="stat-card__label">Medication entries</span>
           <span className="stat-card__value">{snapshot.totals.medicationEntries}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-card__label">Active triggers</span>
+          <span className="stat-card__value">{activeFactorCount}</span>
+          <span className="badge">{noteCount > 0 ? `${noteCount} noted` : 'No notes yet'}</span>
         </div>
       </div>
       <div className="export-actions">

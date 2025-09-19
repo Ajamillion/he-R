@@ -38,3 +38,11 @@ export type PlanProfile = {
   hydrationGoalOz: number;
   regionFlags: Record<string, boolean>;
 };
+
+export type PrecipitatingFactorState = {
+  active: boolean;
+  note: string;
+  updatedAt?: string;
+};
+
+export type PrecipitatingFactorMap = Record<string, PrecipitatingFactorState>;

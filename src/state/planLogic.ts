@@ -1,5 +1,11 @@
 import type { TruthSource } from '../data/truthSource';
-import type { DailyLog, MedicationDose, PegTitration, PlanProfile } from '../types';
+import type {
+  DailyLog,
+  MedicationDose,
+  PegTitration,
+  PlanProfile,
+  PrecipitatingFactorMap
+} from '../types';
 
 const normalizeName = (value: string) => value.toLowerCase();
 
@@ -222,6 +228,12 @@ export type PlanExportSnapshot = {
   profile: PlanProfile;
   pegCaps: number;
   lastSyncedAt?: string;
+  precipitatingFactors: {
+    name: string;
+    active: boolean;
+    note?: string;
+    updatedAt?: string;
+  }[];
   totals: {
     hydrationEntries: number;
     stoolEntries: number;
@@ -242,6 +254,7 @@ type PlanExportOptions = {
   pegCaps: number;
   lastSyncedAt?: string;
   truthVersion: string;
+  factors: PrecipitatingFactorMap;
   now?: Date;
 };
 
@@ -256,6 +269,7 @@ export const buildPlanExportSnapshot = ({
   pegCaps,
   lastSyncedAt,
   truthVersion,
+  factors,
   now = new Date()
 }: PlanExportOptions): PlanExportSnapshot => {
   const sanitizedLogs = logs
@@ -294,6 +308,14 @@ export const buildPlanExportSnapshot = ({
     },
     pegCaps,
     lastSyncedAt,
+    precipitatingFactors: Object.entries(factors)
+      .map(([name, state]) => ({
+        name,
+        active: Boolean(state.active),
+        ...(state.note ? { note: state.note } : {}),
+        ...(state.updatedAt ? { updatedAt: state.updatedAt } : {})
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
     totals,
     logs: sanitizedLogs
   };
@@ -321,6 +343,11 @@ export const buildPlanExportCsv = (snapshot: PlanExportSnapshot): string => {
 
   const regionSummary = enabledRegions.length > 0 ? enabledRegions.join('; ') : 'None';
 
+  const activeFactors = snapshot.precipitatingFactors.filter((factor) => factor.active);
+  const activeFactorSummary =
+    activeFactors.length > 0 ? activeFactors.map((factor) => factor.name).join('; ') : 'None';
+  const notedFactors = snapshot.precipitatingFactors.filter((factor) => factor.note);
+
   rows.push(['Generated at', snapshot.generatedAt, '', '', '']);
   rows.push(['Truth version', snapshot.truthVersion, '', '', '']);
   rows.push(['Last synced at', snapshot.lastSyncedAt ?? 'Not yet synced', '', '', '']);
@@ -328,6 +355,19 @@ export const buildPlanExportCsv = (snapshot: PlanExportSnapshot): string => {
   rows.push(['Body weight (kg)', snapshot.profile.weightKg.toString(), '', '', '']);
   rows.push(['Hydration goal (oz)', snapshot.profile.hydrationGoalOz.toString(), '', '', '']);
   rows.push(['Region flags enabled', regionSummary, '', '', '']);
+  rows.push(['Active precipitating factors', activeFactorSummary, '', '', '']);
+  rows.push(['Factors with notes', notedFactors.length.toString(), '', '', '']);
+  rows.push(['', '', '', '', '']);
+  rows.push(['Precipitating factor', 'Status', 'Last updated', 'Notes', '']);
+  snapshot.precipitatingFactors.forEach((factor) => {
+    rows.push([
+      factor.name,
+      factor.active ? 'Active' : 'Clear',
+      factor.updatedAt ?? '—',
+      factor.note ?? '',
+      ''
+    ]);
+  });
   rows.push(['', '', '', '', '']);
   rows.push(['Date', 'Time', 'Category', 'Item', 'Amount or Notes']);
 

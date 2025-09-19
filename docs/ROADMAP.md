@@ -49,6 +49,7 @@ Each phase lists primary outcomes, the major workstreams, and the go/no-go crite
 - Add hydration + protein goal calculators (weight-based) and late-snack nudges.
 - Surface 7-day insights (hydration/stool/med adherence) and generate shareable JSON snapshots as building blocks for exports.
 - Introduce CSV/PDF export of daily logs for clinic visits; include share via secure email draft.
+- Layer a precipitating factor tracker with activity toggles, timestamped notes, and export integration.
 - Instrument usage analytics (privacy-preserving) and error logging.
 - Wrap the web app with Capacitor for iOS/Android test builds; configure push-ready notification channels (silent for now).
 

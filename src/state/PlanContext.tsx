@@ -17,6 +17,8 @@ import type {
   MedicationDose,
   PegTitration,
   PlanProfile,
+  PrecipitatingFactorMap,
+  PrecipitatingFactorState,
   StoolEntry
 } from '../types';
 import { createEmptyLog, ensureLogExists, computeTitration, evaluateSpacingWarnings } from './planLogic';
@@ -71,16 +73,61 @@ const mergeProfile = (profile?: PlanProfile): PlanProfile => {
   };
 };
 
+const createDefaultFactors = (): PrecipitatingFactorMap =>
+  Object.fromEntries(
+    truthSource.precipitating_factors.map((factor) => [factor, { active: false, note: '' }])
+  );
+
+const normalizeFactorState = (state?: PrecipitatingFactorState): PrecipitatingFactorState => ({
+  active: Boolean(state?.active),
+  note: typeof state?.note === 'string' ? state.note : '',
+  ...(typeof state?.updatedAt === 'string' ? { updatedAt: state.updatedAt } : {})
+});
+
+const mergeFactors = (factors?: PrecipitatingFactorMap): PrecipitatingFactorMap => {
+  const defaults = createDefaultFactors();
+  if (!factors) {
+    return defaults;
+  }
+
+  const merged: PrecipitatingFactorMap = { ...defaults };
+  let changed = false;
+
+  Object.entries(factors).forEach(([name, state]) => {
+    const normalized = normalizeFactorState(state);
+    if (
+      merged[name]?.active !== normalized.active ||
+      merged[name]?.note !== normalized.note ||
+      merged[name]?.updatedAt !== normalized.updatedAt
+    ) {
+      changed = true;
+    }
+    merged[name] = normalized;
+  });
+
+  const sameKeys =
+    Object.keys(merged).length === Object.keys(factors).length &&
+    Object.keys(merged).every((key) => Object.prototype.hasOwnProperty.call(factors, key));
+
+  if (!changed && sameKeys) {
+    return factors;
+  }
+
+  return merged;
+};
+
 type PlanStorage = {
   logs: DailyLog[];
   pegCaps: number;
   profile?: PlanProfile;
+  factors?: PrecipitatingFactorMap;
 };
 
 const defaultStorage: PlanStorage = {
   logs: [],
   pegCaps: 0.5,
-  profile: createDefaultProfile()
+  profile: createDefaultProfile(),
+  factors: createDefaultFactors()
 };
 
 type PlanContextValue = {
@@ -105,6 +152,9 @@ type PlanContextValue = {
   setWeightKg: (value: number) => void;
   setHydrationGoalOz: (value: number) => void;
   setRegionFlag: (flag: string, enabled: boolean) => void;
+  factors: PrecipitatingFactorMap;
+  setFactorActive: (factor: string, active: boolean) => void;
+  setFactorNote: (factor: string, note: string) => void;
   truth: typeof truthSource;
   syncWithCloud: () => Promise<void>;
   cloudState: CloudSyncState;
@@ -125,16 +175,22 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | undefined>(undefined);
   const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const profile = useMemo(() => mergeProfile(storage.profile), [storage.profile]);
+  const factors = useMemo(() => mergeFactors(storage.factors), [storage.factors]);
 
   const setLogs = useCallback(
     (updater: (logs: DailyLog[]) => DailyLog[]) => {
       setStorage((prev) => {
         const normalizedProfile = mergeProfile(prev.profile);
+        const normalizedFactors = mergeFactors(prev.factors);
         const nextLogs = updater(prev.logs);
-        if (nextLogs === prev.logs && prev.profile === normalizedProfile) {
+        if (
+          nextLogs === prev.logs &&
+          prev.profile === normalizedProfile &&
+          prev.factors === normalizedFactors
+        ) {
           return prev;
         }
-        return { ...prev, logs: nextLogs, profile: normalizedProfile };
+        return { ...prev, logs: nextLogs, profile: normalizedProfile, factors: normalizedFactors };
       });
     },
     [setStorage]
@@ -145,15 +201,21 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       let snapshot: DailyLog | undefined;
       setStorage((prev) => {
         const normalizedProfile = mergeProfile(prev.profile);
+        const normalizedFactors = mergeFactors(prev.factors);
         const { logs: updatedLogs, log } = ensureLogExists(prev.logs, date);
         snapshot = log;
-        if (updatedLogs === prev.logs && prev.profile === normalizedProfile) {
+        if (
+          updatedLogs === prev.logs &&
+          prev.profile === normalizedProfile &&
+          prev.factors === normalizedFactors
+        ) {
           return prev;
         }
         return {
           ...prev,
           logs: updatedLogs,
-          profile: normalizedProfile
+          profile: normalizedProfile,
+          factors: normalizedFactors
         };
       });
       return snapshot ?? createEmptyLog(date);
@@ -315,10 +377,15 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       const clamped = Math.min(Math.max(value, min_caps), max_caps);
       setStorage((prev) => {
         const normalizedProfile = mergeProfile(prev.profile);
-        if (prev.pegCaps === clamped && prev.profile === normalizedProfile) {
+        const normalizedFactors = mergeFactors(prev.factors);
+        if (
+          prev.pegCaps === clamped &&
+          prev.profile === normalizedProfile &&
+          prev.factors === normalizedFactors
+        ) {
           return prev;
         }
-        return { ...prev, pegCaps: clamped, profile: normalizedProfile };
+        return { ...prev, pegCaps: clamped, profile: normalizedProfile, factors: normalizedFactors };
       });
     },
     [setStorage]
@@ -332,15 +399,17 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       const clampedWeight = clamp(value, 30, 150);
       setStorage((prev) => {
         const normalizedProfile = mergeProfile(prev.profile);
+        const normalizedFactors = mergeFactors(prev.factors);
         if (normalizedProfile.weightKg === clampedWeight) {
-          if (prev.profile === normalizedProfile) {
+          if (prev.profile === normalizedProfile && prev.factors === normalizedFactors) {
             return prev;
           }
-          return { ...prev, profile: normalizedProfile };
+          return { ...prev, profile: normalizedProfile, factors: normalizedFactors };
         }
         return {
           ...prev,
-          profile: { ...normalizedProfile, weightKg: clampedWeight }
+          profile: { ...normalizedProfile, weightKg: clampedWeight },
+          factors: normalizedFactors
         };
       });
     },
@@ -356,15 +425,17 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       const clampedGoal = clamp(value, min, max);
       setStorage((prev) => {
         const normalizedProfile = mergeProfile(prev.profile);
+        const normalizedFactors = mergeFactors(prev.factors);
         if (normalizedProfile.hydrationGoalOz === clampedGoal) {
-          if (prev.profile === normalizedProfile) {
+          if (prev.profile === normalizedProfile && prev.factors === normalizedFactors) {
             return prev;
           }
-          return { ...prev, profile: normalizedProfile };
+          return { ...prev, profile: normalizedProfile, factors: normalizedFactors };
         }
         return {
           ...prev,
-          profile: { ...normalizedProfile, hydrationGoalOz: clampedGoal }
+          profile: { ...normalizedProfile, hydrationGoalOz: clampedGoal },
+          factors: normalizedFactors
         };
       });
     },
@@ -375,17 +446,18 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     (flag, enabled) => {
       setStorage((prev) => {
         const normalizedProfile = mergeProfile(prev.profile);
+        const normalizedFactors = mergeFactors(prev.factors);
         if (!(flag in normalizedProfile.regionFlags)) {
-          if (prev.profile === normalizedProfile) {
+          if (prev.profile === normalizedProfile && prev.factors === normalizedFactors) {
             return prev;
           }
-          return { ...prev, profile: normalizedProfile };
+          return { ...prev, profile: normalizedProfile, factors: normalizedFactors };
         }
         if (normalizedProfile.regionFlags[flag] === enabled) {
-          if (prev.profile === normalizedProfile) {
+          if (prev.profile === normalizedProfile && prev.factors === normalizedFactors) {
             return prev;
           }
-          return { ...prev, profile: normalizedProfile };
+          return { ...prev, profile: normalizedProfile, factors: normalizedFactors };
         }
         return {
           ...prev,
@@ -394,6 +466,67 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
             regionFlags: {
               ...normalizedProfile.regionFlags,
               [flag]: enabled
+            }
+          },
+          factors: normalizedFactors
+        };
+      });
+    },
+    [setStorage]
+  );
+
+  const setFactorActive = useCallback<PlanContextValue['setFactorActive']>(
+    (factor, active) => {
+      setStorage((prev) => {
+        const normalizedProfile = mergeProfile(prev.profile);
+        const normalizedFactors = mergeFactors(prev.factors);
+        const existing = normalizedFactors[factor] ?? { active: false, note: '' };
+        const desired = Boolean(active);
+        if (existing.active === desired) {
+          if (prev.profile === normalizedProfile && prev.factors === normalizedFactors) {
+            return prev;
+          }
+          return { ...prev, profile: normalizedProfile, factors: normalizedFactors };
+        }
+        return {
+          ...prev,
+          profile: normalizedProfile,
+          factors: {
+            ...normalizedFactors,
+            [factor]: {
+              ...existing,
+              active: desired,
+              updatedAt: new Date().toISOString()
+            }
+          }
+        };
+      });
+    },
+    [setStorage]
+  );
+
+  const setFactorNote = useCallback<PlanContextValue['setFactorNote']>(
+    (factor, note) => {
+      setStorage((prev) => {
+        const normalizedProfile = mergeProfile(prev.profile);
+        const normalizedFactors = mergeFactors(prev.factors);
+        const existing = normalizedFactors[factor] ?? { active: false, note: '' };
+        const trimmed = note.trim();
+        if (existing.note === trimmed) {
+          if (prev.profile === normalizedProfile && prev.factors === normalizedFactors) {
+            return prev;
+          }
+          return { ...prev, profile: normalizedProfile, factors: normalizedFactors };
+        }
+        return {
+          ...prev,
+          profile: normalizedProfile,
+          factors: {
+            ...normalizedFactors,
+            [factor]: {
+              ...existing,
+              note: trimmed,
+              updatedAt: new Date().toISOString()
             }
           }
         };
@@ -444,6 +577,9 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       setWeightKg,
       setHydrationGoalOz,
       setRegionFlag,
+      factors,
+      setFactorActive,
+      setFactorNote,
       truth: truthSource,
       syncWithCloud,
       cloudState,
@@ -466,6 +602,9 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       setWeightKg,
       setHydrationGoalOz,
       setRegionFlag,
+      factors,
+      setFactorActive,
+      setFactorNote,
       syncWithCloud,
       cloudState,
       lastSyncedAt

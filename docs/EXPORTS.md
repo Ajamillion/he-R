@@ -19,6 +19,7 @@ for backups, care-team handoffs, and eventual cloud synchronization. Every field
 | `profile` | Current profile settings (`weightKg`, `hydrationGoalOz`, and `regionFlags`). |
 | `pegCaps` | Current PEG 3350 capsule setting used by the titration helper. |
 | `lastSyncedAt` | Timestamp of the most recent cloud sync (if any). |
+| `precipitatingFactors` | Array capturing the status, notes, and last update per precipitating factor. |
 | `totals` | Counts of hydration, stool, and medication entries across the snapshot. |
 | `logs` | Array of sanitized daily logs ordered chronologically. |
 
@@ -33,6 +34,15 @@ Each entry in `logs` is stripped of internal identifiers and sorted for determin
 - `notes` – Optional care note string when present.
 
 Consumers can round-trip the data back into the application or enrich it for analytics pipelines.
+
+### Precipitating factor payload
+
+Each element of `precipitatingFactors` contains:
+
+- `name` – Factor label from the truth source.
+- `active` – Boolean flag indicating whether the trigger is present.
+- `note` – Optional trimmed note providing context for the team.
+- `updatedAt` – ISO timestamp of the most recent change (present when a toggle or note update occurred).
 
 ## CSV log extract (`buildPlanExportCsv`)
 
@@ -50,8 +60,24 @@ The first block of rows provides context that would otherwise live outside the s
 5. `Body weight (kg)` – Weight used for protein calculations.
 6. `Hydration goal (oz)` – Personalized hydration target.
 7. `Region flags enabled` – Semicolon-delimited list of enabled regional availability flags (`None` when all are disabled).
+8. `Active precipitating factors` – Semicolon-delimited list of currently active triggers (`None` when all are clear).
+9. `Factors with notes` – Count of factors carrying caregiver notes.
 
 All metadata rows pad remaining columns with empty values to keep a consistent 5-column layout.
+
+### Factor tracker table
+
+A second metadata block surfaces the state of every precipitating factor before the daily logs:
+
+| Column | Contents |
+| --- | --- |
+| `Precipitating factor` | Factor name. |
+| `Status` | `Active` or `Clear`. |
+| `Last updated` | ISO timestamp or `—` when untouched. |
+| `Notes` | Context captured in the tracker. |
+
+The final column in the row is blank to preserve the 5-column width. Downstream tooling can
+filter or pivot on the factor table before ingesting the detailed log rows.
 
 ### Log columns
 

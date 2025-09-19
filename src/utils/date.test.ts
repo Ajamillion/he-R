@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getLookbackRange, shiftDate } from './date';
+import { formatDateTimeFriendly, getLookbackRange, shiftDate } from './date';
 
 describe('date utilities', () => {
   it('shifts ISO date strings by the requested number of days', () => {
@@ -10,5 +10,10 @@ describe('date utilities', () => {
   it('builds ascending lookback ranges including the end date', () => {
     expect(getLookbackRange('2025-09-20', 3)).toEqual(['2025-09-18', '2025-09-19', '2025-09-20']);
     expect(getLookbackRange('2025-09-20', 0)).toEqual([]);
+  });
+
+  it('formats ISO timestamps into readable month/day and time', () => {
+    expect(formatDateTimeFriendly('2025-09-20T14:05:00Z')).toMatch(/Sep/);
+    expect(formatDateTimeFriendly('invalid')).toBe('invalid');
   });
 });
