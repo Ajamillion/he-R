@@ -94,6 +94,9 @@ type PlanContextValue = {
   ) => {
     warnings: string[];
   };
+  removeHydration: (date: string, id: string) => void;
+  removeStool: (date: string, id: string) => void;
+  removeMedication: (date: string, id: string) => void;
   updateNotes: (date: string, notes: string) => void;
   pegCaps: number;
   setPegCaps: (value: number) => void;
@@ -110,55 +113,11 @@ type PlanContextValue = {
 
 const PlanContext = createContext<PlanContextValue | undefined>(undefined);
 
-const createEmptyLog = (date: string): DailyLog => ({
-  date,
-  hydration: [],
-  stool: [],
-  medications: [],
-  notes: ''
-});
-
-const ensureLogExists = (logs: DailyLog[], date: string) => {
-  const found = logs.find((log) => log.date === date);
-  if (found) {
-    return {
-      logs,
-      log: { ...found, hydration: [...found.hydration], stool: [...found.stool], medications: [...found.medications] }
-    };
-  }
-  const newLog = createEmptyLog(date);
-  return {
-    logs: [...logs, newLog].sort((a, b) => {
-      if (a.date === b.date) return 0;
-      return a.date > b.date ? -1 : 1;
-    }),
-    log: newLog
-  };
-};
-
-const computeTitration = (log: DailyLog, currentCaps: number): PegTitration => {
-  const stoolCount = log.stool.length;
-  const { step_cap, min_caps, max_caps } = truthSource.titration.peg_3350;
-  if (stoolCount > 3) {
-    return {
-      currentCaps,
-      recommendation: 'decrease',
-      suggestedDelta: Math.max(min_caps, currentCaps - step_cap) - currentCaps
-    };
-  }
-  if (stoolCount < 2) {
-    return {
-      currentCaps,
-      recommendation: 'increase',
-      suggestedDelta: Math.min(max_caps, currentCaps + step_cap) - currentCaps
-    };
-  }
-  return {
-    currentCaps,
-    recommendation: 'hold',
-    suggestedDelta: 0
-  };
-};
+const shouldKeepLog = (log: DailyLog) =>
+  log.hydration.length > 0 ||
+  log.stool.length > 0 ||
+  log.medications.length > 0 ||
+  log.notes.trim().length > 0;
 
 export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const [storage, setStorage] = useLocalStorage<PlanStorage>(STORAGE_KEY, defaultStorage);
@@ -171,7 +130,11 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     (updater: (logs: DailyLog[]) => DailyLog[]) => {
       setStorage((prev) => {
         const normalizedProfile = mergeProfile(prev.profile);
-        return { ...prev, logs: updater(prev.logs), profile: normalizedProfile };
+        const nextLogs = updater(prev.logs);
+        if (nextLogs === prev.logs && prev.profile === normalizedProfile) {
+          return prev;
+        }
+        return { ...prev, logs: nextLogs, profile: normalizedProfile };
       });
     },
     [setStorage]
@@ -200,14 +163,13 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
 
   const addHydration = useCallback<PlanContextValue['addHydration']>(
     (date, entry) => {
-      let warnings: string[] = [];
       setLogs((prevLogs) => {
         const { logs: updatedLogs, log } = ensureLogExists(prevLogs, date);
         const newEntry: HydrationEntry = { id: generateId(), ...entry };
         const nextLog: DailyLog = { ...log, hydration: [...log.hydration, newEntry] };
         return updatedLogs.map((item) => (item.date === date ? nextLog : item));
       });
-      return { warnings };
+      return { warnings: [] };
     },
     [setLogs]
   );
@@ -245,12 +207,92 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     [setLogs]
   );
 
+  const removeHydration = useCallback<PlanContextValue['removeHydration']>(
+    (date, id) => {
+      setLogs((prevLogs) => {
+        let changed = false;
+        const nextLogs = prevLogs.map((item) => {
+          if (item.date !== date) {
+            return item;
+          }
+          const nextHydration = item.hydration.filter((entry) => entry.id !== id);
+          if (nextHydration.length === item.hydration.length) {
+            return item;
+          }
+          changed = true;
+          return { ...item, hydration: nextHydration };
+        });
+        if (!changed) {
+          return prevLogs;
+        }
+        return nextLogs.filter(shouldKeepLog);
+      });
+    },
+    [setLogs]
+  );
+
+  const removeStool = useCallback<PlanContextValue['removeStool']>(
+    (date, id) => {
+      setLogs((prevLogs) => {
+        let changed = false;
+        const nextLogs = prevLogs.map((item) => {
+          if (item.date !== date) {
+            return item;
+          }
+          const nextStool = item.stool.filter((entry) => entry.id !== id);
+          if (nextStool.length === item.stool.length) {
+            return item;
+          }
+          changed = true;
+          return { ...item, stool: nextStool };
+        });
+        if (!changed) {
+          return prevLogs;
+        }
+        return nextLogs.filter(shouldKeepLog);
+      });
+    },
+    [setLogs]
+  );
+
+  const removeMedication = useCallback<PlanContextValue['removeMedication']>(
+    (date, id) => {
+      setLogs((prevLogs) => {
+        let changed = false;
+        const nextLogs = prevLogs.map((item) => {
+          if (item.date !== date) {
+            return item;
+          }
+          const nextMedications = item.medications.filter((entry) => entry.id !== id);
+          if (nextMedications.length === item.medications.length) {
+            return item;
+          }
+          changed = true;
+          return { ...item, medications: nextMedications };
+        });
+        if (!changed) {
+          return prevLogs;
+        }
+        return nextLogs.filter(shouldKeepLog);
+      });
+    },
+    [setLogs]
+  );
+
   const updateNotes = useCallback<PlanContextValue['updateNotes']>(
     (date, notes) => {
       setLogs((prevLogs) => {
         const { logs: updatedLogs, log } = ensureLogExists(prevLogs, date);
+        const existed = updatedLogs === prevLogs;
+        if (log.notes === notes) {
+          return existed ? prevLogs : updatedLogs.filter(shouldKeepLog);
+        }
         const nextLog: DailyLog = { ...log, notes };
-        return updatedLogs.map((item) => (item.date === date ? nextLog : item));
+        const mapped = updatedLogs.map((item) => (item.date === date ? nextLog : item));
+        if (shouldKeepLog(nextLog)) {
+          return mapped;
+        }
+        return mapped.filter(shouldKeepLog);
       });
     },
     [setLogs]
@@ -391,6 +433,9 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       addHydration,
       addStool,
       addMedication,
+      removeHydration,
+      removeStool,
+      removeMedication,
       updateNotes,
       pegCaps: storage.pegCaps,
       setPegCaps,
@@ -410,6 +455,9 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       addHydration,
       addStool,
       addMedication,
+      removeHydration,
+      removeStool,
+      removeMedication,
       updateNotes,
       storage.pegCaps,
       setPegCaps,

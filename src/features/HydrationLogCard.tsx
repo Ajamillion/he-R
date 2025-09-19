@@ -10,7 +10,7 @@ type HydrationLogCardProps = {
 };
 
 export const HydrationLogCard = ({ date }: HydrationLogCardProps) => {
-  const { logs, addHydration, truth, profile } = usePlan();
+  const { logs, addHydration, removeHydration, truth, profile } = usePlan();
   const log = useMemo(() => logs.find((item) => item.date === date), [logs, date]);
   const [time, setTime] = useState(() => toTimeInputValue());
   const [ounces, setOunces] = useState(8);
@@ -68,6 +68,7 @@ export const HydrationLogCard = ({ date }: HydrationLogCardProps) => {
             <tr>
               <th>Time</th>
               <th>Amount</th>
+              <th className="log-table__actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -75,6 +76,16 @@ export const HydrationLogCard = ({ date }: HydrationLogCardProps) => {
               <tr key={entry.id}>
                 <td>{entry.time}</td>
                 <td>{entry.ounces} oz</td>
+                <td className="log-table__actions">
+                  <button
+                    type="button"
+                    className="button button--text button--text-danger"
+                    onClick={() => removeHydration(date, entry.id)}
+                    aria-label={`Remove hydration entry logged at ${entry.time}`}
+                  >
+                    Remove
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

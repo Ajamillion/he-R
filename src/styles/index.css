@@ -278,6 +278,28 @@ select {
   border: 1px solid rgba(69, 123, 157, 0.4);
 }
 
+.button--text {
+  background: transparent;
+  color: var(--accent-strong);
+  padding: 0.35rem 0.75rem;
+  box-shadow: none;
+  transform: none;
+}
+
+.button--text:hover {
+  background-color: rgba(69, 123, 157, 0.12);
+  box-shadow: none;
+  transform: none;
+}
+
+.button--text-danger {
+  color: #a23b25;
+}
+
+.button--text-danger:hover {
+  background-color: rgba(230, 119, 57, 0.14);
+}
+
 .form-grid {
   display: grid;
   gap: 1rem;
@@ -368,6 +390,11 @@ select {
   padding: 0.5rem 0.35rem;
   border-bottom: 1px solid rgba(29, 53, 87, 0.08);
   font-size: 0.9rem;
+}
+
+.log-table__actions {
+  text-align: right;
+  white-space: nowrap;
 }
 
 .alert {

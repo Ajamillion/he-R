@@ -10,7 +10,7 @@ type MedicationLogCardProps = {
 };
 
 export const MedicationLogCard = ({ date }: MedicationLogCardProps) => {
-  const { logs, addMedication, truth } = usePlan();
+  const { logs, addMedication, removeMedication, truth } = usePlan();
   const log = useMemo(() => logs.find((item) => item.date === date), [logs, date]);
   const [time, setTime] = useState(() => toTimeInputValue());
   const [name, setName] = useState(truth.med_library[0]?.name ?? '');
@@ -28,6 +28,11 @@ export const MedicationLogCard = ({ date }: MedicationLogCardProps) => {
     setWarnings(result.warnings);
     setTime(toTimeInputValue());
     setAmount('');
+  };
+
+  const handleRemove = (id: string) => {
+    removeMedication(date, id);
+    setWarnings([]);
   };
 
   return (
@@ -88,6 +93,7 @@ export const MedicationLogCard = ({ date }: MedicationLogCardProps) => {
               <th>Time</th>
               <th>Name</th>
               <th>Amount</th>
+              <th className="log-table__actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -96,6 +102,16 @@ export const MedicationLogCard = ({ date }: MedicationLogCardProps) => {
                 <td>{entry.time}</td>
                 <td>{entry.name}</td>
                 <td>{entry.amount || '—'}</td>
+                <td className="log-table__actions">
+                  <button
+                    type="button"
+                    className="button button--text button--text-danger"
+                    onClick={() => handleRemove(entry.id)}
+                    aria-label={`Remove ${entry.name} logged at ${entry.time}`}
+                  >
+                    Remove
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

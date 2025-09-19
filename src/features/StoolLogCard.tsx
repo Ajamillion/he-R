@@ -10,7 +10,7 @@ type StoolLogCardProps = {
 };
 
 export const StoolLogCard = ({ date }: StoolLogCardProps) => {
-  const { logs, addStool, truth } = usePlan();
+  const { logs, addStool, removeStool, truth } = usePlan();
   const log = useMemo(() => logs.find((item) => item.date === date), [logs, date]);
   const [time, setTime] = useState(() => toTimeInputValue());
   const [score, setScore] = useState(4);
@@ -66,6 +66,7 @@ export const StoolLogCard = ({ date }: StoolLogCardProps) => {
               <th>Time</th>
               <th>Score</th>
               <th>Guidance</th>
+              <th className="log-table__actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -79,6 +80,16 @@ export const StoolLogCard = ({ date }: StoolLogCardProps) => {
                       String(entry.bristol) as keyof typeof truth.stool_quality.mapping
                     ]
                   }
+                </td>
+                <td className="log-table__actions">
+                  <button
+                    type="button"
+                    className="button button--text button--text-danger"
+                    onClick={() => removeStool(date, entry.id)}
+                    aria-label={`Remove stool entry logged at ${entry.time}`}
+                  >
+                    Remove
+                  </button>
                 </td>
               </tr>
             ))}
