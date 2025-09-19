@@ -6,7 +6,8 @@ import {
   computeTitration,
   evaluateSpacingWarnings,
   summarizeLogsForDates,
-  buildPlanExportSnapshot
+  buildPlanExportSnapshot,
+  buildPlanExportCsv
 } from './planLogic';
 
 describe('computeTitration', () => {
@@ -146,5 +147,42 @@ describe('buildPlanExportSnapshot', () => {
     expect(snapshot.logs[1].hydration[1]).toEqual({ time: '13:00', ounces: 10 });
     expect(snapshot.totals).toEqual({ hydrationEntries: 3, stoolEntries: 1, medicationEntries: 1 });
     expect(snapshot.profile.regionFlags).not.toBe(profile.regionFlags);
+  });
+});
+
+describe('buildPlanExportCsv', () => {
+  it('flattens the snapshot into metadata and log rows with escaped values', () => {
+    const log = createEmptyLog('2025-09-18');
+    log.hydration.push({ id: 'h1', time: '08:00', ounces: 10 });
+    log.stool.push({ id: 's1', time: '09:15', bristol: 4 });
+    log.medications.push({ id: 'm1', time: '07:00', name: 'Rifaximin', amount: '550 mg' });
+    log.notes = 'Focus, steady intake';
+
+    const profile: PlanProfile = {
+      weightKg: 68,
+      hydrationGoalOz: 56,
+      regionFlags: Object.fromEntries(truthSource.region_flags.map((flag) => [flag, false]))
+    };
+
+    const snapshot = buildPlanExportSnapshot({
+      logs: [log],
+      profile,
+      pegCaps: 0.75,
+      lastSyncedAt: undefined,
+      truthVersion: truthSource.version,
+      now: new Date('2025-09-20T00:00:00Z')
+    });
+
+    const csv = buildPlanExportCsv(snapshot);
+    const lines = csv.split('\n');
+
+    expect(lines[0]).toBe('Generated at,2025-09-20T00:00:00.000Z,,,,');
+    expect(lines).toContain('Date,Time,Category,Item,Amount or Notes');
+    expect(lines).toContain('2025-09-18,08:00,Hydration,Hydration,10 oz');
+    expect(lines).toContain('2025-09-18,07:00,Medication,Rifaximin,550 mg');
+    const notesLine = lines.find((line) => line.startsWith('2025-09-18,,Notes'));
+    expect(notesLine).toBe('2025-09-18,,Notes,Care note,"Focus, steady intake"');
+    const regionLine = lines.find((line) => line.startsWith('Region flags enabled'));
+    expect(regionLine?.startsWith('Region flags enabled,None')).toBe(true);
   });
 });

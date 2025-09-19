@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/Card';
 import { usePlan } from '../state/PlanContext';
-import { buildPlanExportSnapshot } from '../state/planLogic';
+import { buildPlanExportCsv, buildPlanExportSnapshot } from '../state/planLogic';
 import { formatDateFriendly } from '../utils/date';
 
 type PlanExportCardProps = {
   date: string;
 };
 
-type ExportStatus = 'idle' | 'copied' | 'downloaded' | 'error';
+type ExportStatus = 'idle' | 'copied-json' | 'downloaded-json' | 'downloaded-csv' | 'error';
 
 export const PlanExportCard = ({ date }: PlanExportCardProps) => {
   const { logs, profile, pegCaps, lastSyncedAt, truth } = usePlan();
@@ -27,6 +27,7 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
   );
 
   const exportJson = useMemo(() => JSON.stringify(snapshot, null, 2), [snapshot]);
+  const exportCsv = useMemo(() => buildPlanExportCsv(snapshot), [snapshot]);
 
   const preview = useMemo(() => {
     const lines = exportJson.split('\n');
@@ -49,38 +50,48 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
     }
     try {
       await navigator.clipboard.writeText(exportJson);
-      setStatus('copied');
+      setStatus('copied-json');
     } catch (error) {
       setStatus('error');
     }
   };
 
-  const handleDownload = () => {
+  const downloadFile = (content: string, mime: string, filename: string, nextStatus: ExportStatus) => {
     if (typeof window === 'undefined') {
       setStatus('error');
       return;
     }
     try {
-      const blob = new Blob([exportJson], { type: 'application/json' });
+      const blob = new Blob([content], { type: mime });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `her-plan-${date}.json`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      setStatus('downloaded');
+      setStatus(nextStatus);
     } catch (error) {
       setStatus('error');
     }
   };
 
+  const handleDownloadJson = () => {
+    downloadFile(exportJson, 'application/json', `her-plan-${date}.json`, 'downloaded-json');
+  };
+
+  const handleDownloadCsv = () => {
+    downloadFile(exportCsv, 'text/csv', `her-plan-${date}.csv`, 'downloaded-csv');
+  };
+
   let statusMessage = '';
-  if (status === 'copied') {
+  if (status === 'copied-json') {
     statusMessage = 'Copied export JSON to clipboard.';
-  } else if (status === 'downloaded') {
-    statusMessage = 'Download started—check your browser downloads tray.';
+  } else if (status === 'downloaded-json') {
+    statusMessage = 'Download started—check your browser downloads tray for the JSON file.';
+  } else if (status === 'downloaded-csv') {
+    statusMessage = 'Download started—CSV log ready in your downloads tray.';
   } else if (status === 'error') {
     statusMessage = 'Unable to access clipboard or downloads in this environment.';
   }
@@ -90,9 +101,10 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
   return (
     <Card title="Plan export" tag="Share or archive" className="span-4">
       <p className="helper-text">
-        Generate a JSON snapshot for {snapshot.logs.length} logged day{snapshot.logs.length === 1 ? '' : 's'}.
-        File name uses {date}.
+        Generate structured exports for {snapshot.logs.length} logged day{snapshot.logs.length === 1 ? '' : 's'}. File names
+        use {date}.
       </p>
+      <p className="helper-text">Download JSON for backups or CSV to review logs in spreadsheets.</p>
       <div className="stat-grid">
         <div className="stat-card">
           <span className="stat-card__label">Hydration entries</span>
@@ -108,11 +120,14 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
         </div>
       </div>
       <div className="export-actions">
-        <button className="button" type="button" onClick={handleDownload}>
+        <button className="button" type="button" onClick={handleDownloadJson}>
           Download JSON
         </button>
         <button className="button button--ghost" type="button" onClick={handleCopy}>
           Copy JSON
+        </button>
+        <button className="button button--ghost" type="button" onClick={handleDownloadCsv}>
+          Download CSV
         </button>
       </div>
       {statusMessage ? <p className="helper-text export-status">{statusMessage}</p> : null}

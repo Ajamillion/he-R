@@ -298,3 +298,56 @@ export const buildPlanExportSnapshot = ({
     logs: sanitizedLogs
   };
 };
+
+const escapeCsvValue = (value: string) => {
+  if (value.length === 0) {
+    return '';
+  }
+  const shouldQuote = /[",\n\r]/.test(value);
+  const normalized = value.replace(/"/g, '""');
+  return shouldQuote ? `"${normalized}"` : normalized;
+};
+
+const joinRow = (columns: string[]) => columns.map(escapeCsvValue).join(',');
+
+const formatRegionFlag = (flag: string) => flag.replace(/_/g, ' ');
+
+export const buildPlanExportCsv = (snapshot: PlanExportSnapshot): string => {
+  const rows: string[][] = [];
+
+  const enabledRegions = Object.entries(snapshot.profile.regionFlags)
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([flag]) => formatRegionFlag(flag));
+
+  const regionSummary = enabledRegions.length > 0 ? enabledRegions.join('; ') : 'None';
+
+  rows.push(['Generated at', snapshot.generatedAt, '', '', '']);
+  rows.push(['Truth version', snapshot.truthVersion, '', '', '']);
+  rows.push(['Last synced at', snapshot.lastSyncedAt ?? 'Not yet synced', '', '', '']);
+  rows.push(['PEG 3350 caps', snapshot.pegCaps.toString(), '', '', '']);
+  rows.push(['Body weight (kg)', snapshot.profile.weightKg.toString(), '', '', '']);
+  rows.push(['Hydration goal (oz)', snapshot.profile.hydrationGoalOz.toString(), '', '', '']);
+  rows.push(['Region flags enabled', regionSummary, '', '', '']);
+  rows.push(['', '', '', '', '']);
+  rows.push(['Date', 'Time', 'Category', 'Item', 'Amount or Notes']);
+
+  snapshot.logs.forEach((log) => {
+    log.hydration.forEach((entry) => {
+      rows.push([log.date, entry.time, 'Hydration', 'Hydration', `${entry.ounces} oz`]);
+    });
+
+    log.stool.forEach((entry) => {
+      rows.push([log.date, entry.time, 'Stool', `Bristol ${entry.bristol}`, `Type ${entry.bristol}`]);
+    });
+
+    log.medications.forEach((entry) => {
+      rows.push([log.date, entry.time, 'Medication', entry.name, entry.amount]);
+    });
+
+    if (log.notes) {
+      rows.push([log.date, '', 'Notes', 'Care note', log.notes]);
+    }
+  });
+
+  return rows.map((row) => joinRow(row)).join('\n');
+};
