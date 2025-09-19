@@ -47,6 +47,7 @@ Each phase lists primary outcomes, the major workstreams, and the go/no-go crite
 - Build log editors for hydration, stool counts, Bristol scale, medication doses, and notes—backed by validation derived from the truth source.
 - Implement spacing/titration rule engines with inline alerts and contextual microcopy.
 - Add hydration + protein goal calculators (weight-based) and late-snack nudges.
+- Surface 7-day insights (hydration/stool/med adherence) and generate shareable JSON snapshots as building blocks for exports.
 - Introduce CSV/PDF export of daily logs for clinic visits; include share via secure email draft.
 - Instrument usage analytics (privacy-preserving) and error logging.
 - Wrap the web app with Capacitor for iOS/Android test builds; configure push-ready notification channels (silent for now).
@@ -116,7 +117,7 @@ Each phase lists primary outcomes, the major workstreams, and the go/no-go crite
 2. **Design tokens** – Extract colors, spacing, typography into a centralized system for reuse across web/PWA/Capacitor shells.
 3. **Accessibility audit** – Run linting (eslint-plugin-jsx-a11y) and manual keyboard testing; document remediation tasks.
 4. **CI hardening** – Configure GitHub Actions (or alternative) to run lint, type-check, Vitest, and Lighthouse CI on pull requests.
-5. **Documentation pack** – Publish API reference for PlanContext, state diagrams, and pilot onboarding guide.
+5. **Documentation pack** – Publish API reference for PlanContext, state diagrams, JSON snapshot contract, and pilot onboarding guide.
 
 ## Measuring Success
 - **Adherence** – % of logged doses/hydration entries vs. prescribed plan.

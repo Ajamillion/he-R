@@ -6,6 +6,8 @@ A Vite + React TypeScript starter that turns the hepatic encephalopathy truth so
 
 - **Truth-source aware UI** – Daily rhythm timeline, medication library, spacing rules, and risk guidance are rendered directly from the structured HE data model.
 - **Actionable tracking** – Hydration, stool, and medication logs with contextual guidance, spacing alerts, and PEG titration suggestions based on the titration policy.
+- **Trend insights** – Seven-day hydration, stool, and medication summaries surface wins and gaps automatically.
+- **Shareable export** – Copy or download a JSON snapshot of the plan for caregivers, clinicians, or backups.
 - **Mobile-first layout** – Responsive cards and inputs tuned for touch, with a PWA manifest and gradient theming for at-a-glance clarity.
 - **Cloud sync façade** – A sync banner simulates connectivity states and can be wired to a real backend or serverless function later.
 - **Local persistence hook** – State is saved in `localStorage` so the experience survives refreshes while offline.

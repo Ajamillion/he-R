@@ -16,6 +16,8 @@ import { StoolLogCard } from './features/StoolLogCard';
 import { StoolQualityCard } from './features/StoolQualityCard';
 import { TargetsOverview } from './features/TargetsOverview';
 import { PlanSettingsCard } from './features/PlanSettingsCard';
+import { PlanInsightsCard } from './features/PlanInsightsCard';
+import { PlanExportCard } from './features/PlanExportCard';
 import { usePlan } from './state/PlanContext';
 import { formatDateFriendly, todayInputValue } from './utils/date';
 
@@ -56,6 +58,7 @@ function App() {
       <main className="grid grid--dashboard">
         <PlanSettingsCard />
         <TargetsOverview />
+        <PlanInsightsCard date={selectedDate} />
         <DailyRhythmTimeline />
         <PegTitrationCard date={selectedDate} />
         <HydrationLogCard date={selectedDate} />
@@ -69,6 +72,7 @@ function App() {
         <StagingMapCard />
         <SleepHygieneCard />
         <MicrocopyCard />
+        <PlanExportCard date={selectedDate} />
       </main>
     </div>
   );

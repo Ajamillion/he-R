@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { truthSource } from '../data/truthSource';
-import { createEmptyLog, computeTitration, evaluateSpacingWarnings } from './planLogic';
+import type { PlanProfile } from '../types';
+import {
+  createEmptyLog,
+  computeTitration,
+  evaluateSpacingWarnings,
+  summarizeLogsForDates,
+  buildPlanExportSnapshot
+} from './planLogic';
 
 describe('computeTitration', () => {
   it('recommends increasing PEG caps when stool count is below target', () => {
@@ -74,5 +81,70 @@ describe('evaluateSpacingWarnings', () => {
     );
 
     expect(warnings).toHaveLength(0);
+  });
+});
+
+describe('summarizeLogsForDates', () => {
+  it('fills empty days and computes averages across the range', () => {
+    const first = createEmptyLog('2025-09-16');
+    first.hydration.push(
+      { id: 'h1', time: '08:00', ounces: 10 },
+      { id: 'h2', time: '10:30', ounces: 8 }
+    );
+    first.stool.push({ id: 's1', time: '09:00', bristol: 4 });
+
+    const third = createEmptyLog('2025-09-18');
+    third.hydration.push({ id: 'h3', time: '12:00', ounces: 16 });
+    third.medications.push({ id: 'm1', time: '07:45', name: 'Lactulose', amount: '30 mL' });
+
+    const summary = summarizeLogsForDates([first, third], ['2025-09-16', '2025-09-17', '2025-09-18']);
+
+    expect(summary.days).toBe(3);
+    expect(summary.range[1]).toMatchObject({ hydrationOz: 0, stoolCount: 0, medicationCount: 0 });
+    expect(summary.hydrationAverageOz).toBeCloseTo((18 + 0 + 16) / 3, 5);
+    expect(summary.stoolAverageCount).toBeCloseTo(1 / 3, 5);
+    expect(summary.medicationAdherenceRatio).toBeCloseTo(1 / 3, 5);
+    expect(summary.topHydrationDay?.date).toBe('2025-09-18');
+  });
+});
+
+describe('buildPlanExportSnapshot', () => {
+  it('produces a sanitized, ordered snapshot of plan data', () => {
+    const earlier = createEmptyLog('2025-09-18');
+    earlier.hydration.push({ id: 'h1', time: '09:00', ounces: 12 });
+    earlier.notes = '  Keep steady  ';
+
+    const later = createEmptyLog('2025-09-19');
+    later.hydration.push({ id: 'h2', time: '13:00', ounces: 10 }, { id: 'h3', time: '07:30', ounces: 8 });
+    later.stool.push({ id: 's1', time: '08:00', bristol: 4 });
+    later.medications.push({ id: 'm1', time: '06:30', name: 'Rifaximin', amount: '550 mg' });
+
+    const profile: PlanProfile = {
+      weightKg: 72,
+      hydrationGoalOz: 60,
+      regionFlags: Object.fromEntries(
+        truthSource.region_flags.map((flag) => [flag, flag === 'rifaximin_available'])
+      )
+    };
+
+    const snapshot = buildPlanExportSnapshot({
+      logs: [later, earlier],
+      profile,
+      pegCaps: 0.75,
+      lastSyncedAt: '2025-09-19T08:00:00Z',
+      truthVersion: truthSource.version,
+      now: new Date('2025-09-20T00:00:00Z')
+    });
+
+    expect(snapshot.generatedAt).toBe('2025-09-20T00:00:00.000Z');
+    expect(snapshot.logs[0].date).toBe('2025-09-18');
+    expect(snapshot.logs[0].hydration[0]).toEqual({ time: '09:00', ounces: 12 });
+    expect('id' in snapshot.logs[0].hydration[0]).toBe(false);
+    expect(snapshot.logs[0].notes).toBe('Keep steady');
+    expect(snapshot.logs[1].notes).toBeUndefined();
+    expect(snapshot.logs[1].hydration[0]).toEqual({ time: '07:30', ounces: 8 });
+    expect(snapshot.logs[1].hydration[1]).toEqual({ time: '13:00', ounces: 10 });
+    expect(snapshot.totals).toEqual({ hydrationEntries: 3, stoolEntries: 1, medicationEntries: 1 });
+    expect(snapshot.profile.regionFlags).not.toBe(profile.regionFlags);
   });
 });
