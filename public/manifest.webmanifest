@@ -1,0 +1,15 @@
+{
+  "name": "HE•R Companion",
+  "short_name": "HE•R",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1d3557",
+  "theme_color": "#1d3557",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml"
+    }
+  ]
+}
