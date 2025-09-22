@@ -1,15 +1,15 @@
 # Status Snapshot & Forecast
 
-_Last updated: 2025-09-22_
+_Last updated: 2025-09-23_
 
 ## Completion Estimates
 
 | Stream | Current Status | Completion % | Notes |
 | --- | --- | --- | --- |
-| Phase 0 · Foundation | Core dashboard, lookback insights, truth-source ingestion, spacing/titration rules, and persistence scaffolding are live. Remaining work centers on CI automations, accessibility, and packaging labs for pilots. | 85% | Lab cadence tracking and export metadata landed; unblock tooling installs and finalize CI/a11y coverage. |
-| Phase 1 · Guided Companion | Daily logging, insights, and JSON/CSV export exist, but PDF outputs, sharing, analytics, and native packaging are outstanding. | 32% | Lab reminders and electrolyte checklists round out coaching; next deliverables are richer share UX, instrumentation, and Capacitor shells. |
+| Phase 0 · Foundation | Core dashboard, lookback insights, truth-source ingestion, spacing/titration rules, and persistence scaffolding are live. Remaining work centers on CI automations, accessibility, and packaging labs for pilots. | 87% | Daily rhythm checklist and export wiring landed; unblock tooling installs and finalize CI/a11y coverage. |
+| Phase 1 · Guided Companion | Daily logging, insights, and JSON/CSV export exist, but PDF outputs, sharing, analytics, and native packaging are outstanding. | 36% | Checklist completions now reinforce routines; next deliverables are richer share UX, instrumentation, and Capacitor shells. |
 | Phase 2 · Connected Care | Not started. | 0% | Requires backend selection, auth, sync, and clinician dashboard. |
-| Cross-cutting workstreams | Documentation, tests, and design system seeds exist; automated quality and compliance tracks are emerging. | 44% | Added lab tracker tests/docs; next up are CI jobs, accessibility backlog, and security checklist. |
+| Cross-cutting workstreams | Documentation, tests, and design system seeds exist; automated quality and compliance tracks are emerging. | 46% | Checklist/export docs updated; next up are CI jobs, accessibility backlog, and security checklist. |
 
 ## Time-to-Ready Forecast
 
@@ -23,8 +23,9 @@ _Last updated: 2025-09-22_
 
 1. Resolve npm registry access so dependencies install and validation tests can run.
 2. Stand up lint/type/test CI job definitions once dependency installs succeed, covering new lab cadence and export suites.
-3. Publish accessibility issue log, schedule clinician review of the lab tracker, and draft pilot caregiver onboarding + instrumentation plan.
-4. Extend the export spec to cover the PDF clinician packet—CSV, factor tracker, and lab cadence metadata now documented in `docs/EXPORTS.md`.
+3. Publish accessibility issue log, schedule clinician review of the lab + checklist trackers, and draft pilot caregiver onboarding + instrumentation plan.
+4. Extend the export spec to cover the PDF clinician packet—CSV, factor tracker, lab cadence, and rhythm checklist metadata now documented in `docs/EXPORTS.md`.
+5. Derive streak insights from the rhythm checklist to surface inside PlanInsights and caregiver coaching copy.
 
 ## Risks & Mitigations (Updated)
 

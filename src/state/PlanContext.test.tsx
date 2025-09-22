@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { PlanProvider, usePlan } from './PlanContext';
+import { makeRhythmItemId } from '../utils/rhythm';
 
 type WrapperProps = {
   children: ReactNode;
@@ -51,6 +52,37 @@ describe('PlanProvider log management', () => {
     });
 
     expect(result.current.logs.find((log) => log.date === date)).toBeUndefined();
+  });
+
+  it('tracks daily rhythm checklist completions and removes empty logs after clearing', () => {
+    const { result } = renderHook(() => usePlan(), { wrapper });
+    const date = '2025-09-21';
+    const task = { id: makeRhythmItemId('wake', 'Lemon water'), time: 'wake', task: 'Lemon water' };
+
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2025-09-21T07:05:00Z'));
+      act(() => {
+        result.current.setRhythmCompletion(date, task, true);
+      });
+
+      const log = result.current.logs.find((entry) => entry.date === date);
+      expect(log?.rhythmChecklist).toHaveLength(1);
+      expect(log?.rhythmChecklist[0]).toMatchObject({
+        id: task.id,
+        time: task.time,
+        task: task.task,
+        completedAt: '2025-09-21T07:05:00.000Z'
+      });
+
+      act(() => {
+        result.current.setRhythmCompletion(date, task, false);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(result.current.logs.find((entry) => entry.date === date)).toBeUndefined();
   });
 });
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CloudSyncBanner } from './features/CloudSyncBanner';
 import { DailyRhythmTimeline } from './features/DailyRhythmTimeline';
+import { DailyRhythmChecklistCard } from './features/DailyRhythmChecklistCard';
 import { HydrationLogCard } from './features/HydrationLogCard';
 import { LogDateSelector } from './features/LogDateSelector';
 import { MedicationLibraryCard } from './features/MedicationLibraryCard';
@@ -61,6 +62,7 @@ function App() {
         <TargetsOverview />
         <PlanInsightsCard date={selectedDate} />
         <DailyRhythmTimeline />
+        <DailyRhythmChecklistCard date={selectedDate} />
         <PegTitrationCard date={selectedDate} />
         <HydrationLogCard date={selectedDate} />
         <StoolLogCard date={selectedDate} />

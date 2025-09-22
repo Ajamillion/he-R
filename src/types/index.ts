@@ -17,11 +17,21 @@ export type MedicationDose = {
   amount: string;
 };
 
+export type RhythmChecklistEntry = {
+  id: string;
+  time: string;
+  task: string;
+  completedAt: string;
+};
+
+export type RhythmChecklistItem = Omit<RhythmChecklistEntry, 'completedAt'>;
+
 export type DailyLog = {
   date: string; // YYYY-MM-DD
   hydration: HydrationEntry[];
   stool: StoolEntry[];
   medications: MedicationDose[];
+  rhythmChecklist: RhythmChecklistEntry[];
   notes: string;
 };
 

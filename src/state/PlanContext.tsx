@@ -20,6 +20,7 @@ import type {
   PlanProfile,
   PrecipitatingFactorMap,
   PrecipitatingFactorState,
+  RhythmChecklistItem,
   StoolEntry
 } from '../types';
 import { createEmptyLog, ensureLogExists, computeTitration, evaluateSpacingWarnings } from './planLogic';
@@ -157,6 +158,7 @@ type PlanContextValue = {
   removeStool: (date: string, id: string) => void;
   removeMedication: (date: string, id: string) => void;
   updateNotes: (date: string, notes: string) => void;
+  setRhythmCompletion: (date: string, item: RhythmChecklistItem, completed: boolean) => void;
   pegCaps: number;
   setPegCaps: (value: number) => void;
   titrationFor: (date: string) => PegTitration;
@@ -180,6 +182,7 @@ const shouldKeepLog = (log: DailyLog) =>
   log.hydration.length > 0 ||
   log.stool.length > 0 ||
   log.medications.length > 0 ||
+  log.rhythmChecklist.length > 0 ||
   log.notes.trim().length > 0;
 
 export const PlanProvider = ({ children }: { children: ReactNode }) => {
@@ -189,6 +192,15 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
   const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const profile = useMemo(() => mergeProfile(storage.profile), [storage.profile]);
   const factors = useMemo(() => mergeFactors(storage.factors), [storage.factors]);
+  const normalizedLogs = useMemo(
+    () =>
+      storage.logs.map((log) => ({
+        ...log,
+        notes: typeof log.notes === 'string' ? log.notes : '',
+        rhythmChecklist: Array.isArray(log.rhythmChecklist) ? log.rhythmChecklist : []
+      })),
+    [storage.logs]
+  );
 
   const setLogs = useCallback(
     (updater: (logs: DailyLog[]) => DailyLog[]) => {
@@ -364,6 +376,51 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
         }
         const nextLog: DailyLog = { ...log, notes };
         const mapped = updatedLogs.map((item) => (item.date === date ? nextLog : item));
+        if (shouldKeepLog(nextLog)) {
+          return mapped;
+        }
+        return mapped.filter(shouldKeepLog);
+      });
+    },
+    [setLogs]
+  );
+
+  const setRhythmCompletion = useCallback<PlanContextValue['setRhythmCompletion']>(
+    (date, item, completed) => {
+      setLogs((prevLogs) => {
+        const { logs: updatedLogs, log } = ensureLogExists(prevLogs, date);
+        const checklist = log.rhythmChecklist;
+        const index = checklist.findIndex((entry) => entry.id === item.id);
+        let nextChecklist = checklist;
+
+        if (completed) {
+          const timestamp = new Date().toISOString();
+          if (index >= 0) {
+            const updatedEntry = {
+              id: item.id,
+              time: item.time,
+              task: item.task,
+              completedAt: timestamp
+            };
+            nextChecklist = checklist.map((entry, entryIndex) =>
+              entryIndex === index ? updatedEntry : entry
+            );
+          } else {
+            nextChecklist = [
+              ...checklist,
+              { id: item.id, time: item.time, task: item.task, completedAt: timestamp }
+            ];
+          }
+        } else if (index >= 0) {
+          nextChecklist = checklist.filter((entry) => entry.id !== item.id);
+        }
+
+        if (nextChecklist === checklist) {
+          return updatedLogs === prevLogs ? prevLogs : updatedLogs.filter(shouldKeepLog);
+        }
+
+        const nextLog: DailyLog = { ...log, rhythmChecklist: nextChecklist };
+        const mapped = updatedLogs.map((entry) => (entry.date === date ? nextLog : entry));
         if (shouldKeepLog(nextLog)) {
           return mapped;
         }
@@ -613,7 +670,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
 
   const value = useMemo<PlanContextValue>(
     () => ({
-      logs: storage.logs,
+      logs: normalizedLogs,
       getLogByDate,
       addHydration,
       addStool,
@@ -622,6 +679,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       removeStool,
       removeMedication,
       updateNotes,
+      setRhythmCompletion,
       pegCaps: storage.pegCaps,
       setPegCaps,
       titrationFor,
@@ -639,7 +697,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       lastSyncedAt
     }),
     [
-      storage.logs,
+      normalizedLogs,
       getLogByDate,
       addHydration,
       addStool,
@@ -648,6 +706,7 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
       removeStool,
       removeMedication,
       updateNotes,
+      setRhythmCompletion,
       storage.pegCaps,
       setPegCaps,
       titrationFor,

@@ -7,6 +7,7 @@ A Vite + React TypeScript starter that turns the hepatic encephalopathy truth so
 - **Truth-source aware UI** – Daily rhythm timeline, medication library, spacing rules, and risk guidance are rendered directly from the structured HE data model.
 - **Actionable tracking** – Hydration, stool, and medication logs with contextual guidance, spacing alerts, and PEG titration suggestions based on the titration policy.
 - **Trend insights** – Seven-day hydration, stool, and medication summaries surface wins and gaps automatically.
+- **Daily rhythm checklist** – Check off wake-to-evening habits to reinforce adherence and visualize progress streaks.
 - **Shareable export** – Copy or download a JSON snapshot or spreadsheet CSV for caregivers, clinicians, or backups.
 - **Precipitating factor tracker** – Toggle hepatic encephalopathy triggers and capture timestamped notes for the team.
 - **Lab cadence tracker** – Record the most recent labs, surface the next draw window, and follow electrolyte actions at a glance.

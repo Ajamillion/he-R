@@ -21,7 +21,7 @@ for backups, care-team handoffs, and eventual cloud synchronization. Every field
 | `lastSyncedAt` | Timestamp of the most recent cloud sync (if any). |
 | `labCadenceWeeks` | Lab cadence in weeks sourced from the truth file. |
 | `precipitatingFactors` | Array capturing the status, notes, and last update per precipitating factor. |
-| `totals` | Counts of hydration, stool, and medication entries across the snapshot. |
+| `totals` | Counts of hydration, stool, medication entries, and daily rhythm completions captured in the snapshot. |
 | `logs` | Array of sanitized daily logs ordered chronologically. |
 
 ### Daily log payload
@@ -32,6 +32,7 @@ Each entry in `logs` is stripped of internal identifiers and sorted for determin
 - `hydration` – Array of `{ time, ounces }` entries sorted by time.
 - `stool` – Array of `{ time, bristol }` entries sorted by time.
 - `medications` – Array of `{ time, name, amount }` entries sorted by time.
+- `rhythmChecklist` – Array of `{ id, time, task, completedAt }` entries sorted by completion timestamp.
 - `notes` – Optional care note string when present.
 
 Consumers can round-trip the data back into the application or enrich it for analytics pipelines.
@@ -67,6 +68,7 @@ The first block of rows provides context that would otherwise live outside the s
 11. `Region flags enabled` – Semicolon-delimited list of enabled regional availability flags (`None` when all are disabled).
 12. `Active precipitating factors` – Semicolon-delimited list of currently active triggers (`None` when all are clear).
 13. `Factors with notes` – Count of factors carrying caregiver notes.
+14. `Daily rhythm completions` – Total count of checklist acknowledgements across the export window.
 
 Rows for `Next labs due` and `Lab timing status` only appear when the caregiver has captured a last lab date. All metadata rows pad remaining columns with empty values to keep a consistent 5-column layout.
 
@@ -92,9 +94,9 @@ After a blank spacer row the table header is emitted:
 | --- | --- |
 | `Date` | Log date in ISO format. |
 | `Time` | Entry time (HH:MM); blank for notes. |
-| `Category` | One of `Hydration`, `Stool`, `Medication`, or `Notes`. |
-| `Item` | Human-readable label (`Hydration`, `Bristol X`, medication name, or `Care note`). |
-| `Amount or Notes` | Quantified value (e.g., `10 oz`, `Type 4`, `550 mg`) or the free-text note. |
+| `Category` | One of `Hydration`, `Stool`, `Medication`, `Rhythm`, or `Notes`. |
+| `Item` | Human-readable label (`Hydration`, `Bristol X`, medication name, `Lemon water`, or `Care note`). |
+| `Amount or Notes` | Quantified value (e.g., `10 oz`, `Type 4`, `550 mg`), `Completed at …` for checklist rows, or the free-text note. |
 
 Hydration, stool, and medication entries respect chronological ordering within their day.
 Notes appear once per day when present. Special characters are escaped per RFC 4180 so commas or

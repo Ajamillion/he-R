@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { truthSource } from '../data/truthSource';
+import { makeRhythmItemId } from '../utils/rhythm';
 import type { PlanProfile, PrecipitatingFactorMap } from '../types';
 import {
   createEmptyLog,
@@ -114,11 +115,23 @@ describe('buildPlanExportSnapshot', () => {
     const earlier = createEmptyLog('2025-09-18');
     earlier.hydration.push({ id: 'h1', time: '09:00', ounces: 12 });
     earlier.notes = '  Keep steady  ';
+    earlier.rhythmChecklist.push({
+      id: makeRhythmItemId('wake', 'Lemon water'),
+      time: 'wake',
+      task: 'Lemon water',
+      completedAt: '2025-09-18T07:05:00Z'
+    });
 
     const later = createEmptyLog('2025-09-19');
     later.hydration.push({ id: 'h2', time: '13:00', ounces: 10 }, { id: 'h3', time: '07:30', ounces: 8 });
     later.stool.push({ id: 's1', time: '08:00', bristol: 4 });
     later.medications.push({ id: 'm1', time: '06:30', name: 'Rifaximin', amount: '550 mg' });
+    later.rhythmChecklist.push({
+      id: makeRhythmItemId('+20m', 'PHGG 1/4 cap in 12 oz water'),
+      time: '+20m',
+      task: 'PHGG 1/4 cap in 12 oz water',
+      completedAt: '2025-09-19T12:15:00Z'
+    });
 
     const profile: PlanProfile = {
       weightKg: 72,
@@ -153,13 +166,34 @@ describe('buildPlanExportSnapshot', () => {
     expect(snapshot.logs[1].notes).toBeUndefined();
     expect(snapshot.logs[1].hydration[0]).toEqual({ time: '07:30', ounces: 8 });
     expect(snapshot.logs[1].hydration[1]).toEqual({ time: '13:00', ounces: 10 });
-    expect(snapshot.totals).toEqual({ hydrationEntries: 3, stoolEntries: 1, medicationEntries: 1 });
+    expect(snapshot.totals).toEqual({
+      hydrationEntries: 3,
+      stoolEntries: 1,
+      medicationEntries: 1,
+      rhythmCompletions: 2
+    });
     expect(snapshot.profile.regionFlags).not.toBe(profile.regionFlags);
     expect(snapshot.profile.lastLabDate).toBe('2025-09-18');
     expect(snapshot.labCadenceWeeks).toBe(truthSource.lab_cadence.weeks);
     expect(snapshot.precipitatingFactors).toEqual([
       { name: 'dehydration', active: false },
       { name: 'infection', active: true, note: 'Fever 101°F', updatedAt: '2025-09-19T10:00:00Z' }
+    ]);
+    expect(snapshot.logs[0].rhythmChecklist).toEqual([
+      {
+        id: makeRhythmItemId('wake', 'Lemon water'),
+        time: 'wake',
+        task: 'Lemon water',
+        completedAt: '2025-09-18T07:05:00Z'
+      }
+    ]);
+    expect(snapshot.logs[1].rhythmChecklist).toEqual([
+      {
+        id: makeRhythmItemId('+20m', 'PHGG 1/4 cap in 12 oz water'),
+        time: '+20m',
+        task: 'PHGG 1/4 cap in 12 oz water',
+        completedAt: '2025-09-19T12:15:00Z'
+      }
     ]);
   });
 });
@@ -171,6 +205,12 @@ describe('buildPlanExportCsv', () => {
     log.stool.push({ id: 's1', time: '09:15', bristol: 4 });
     log.medications.push({ id: 'm1', time: '07:00', name: 'Rifaximin', amount: '550 mg' });
     log.notes = 'Focus, steady intake';
+    log.rhythmChecklist.push({
+      id: makeRhythmItemId('wake', 'Lemon water'),
+      time: 'wake',
+      task: 'Lemon water',
+      completedAt: '2025-09-18T07:05:00Z'
+    });
 
     const profile: PlanProfile = {
       weightKg: 68,
@@ -201,12 +241,15 @@ describe('buildPlanExportCsv', () => {
     expect(lines).toContain('Date,Time,Category,Item,Amount or Notes');
     expect(lines).toContain('2025-09-18,08:00,Hydration,Hydration,10 oz');
     expect(lines).toContain('2025-09-18,07:00,Medication,Rifaximin,550 mg');
+    expect(lines).toContain('2025-09-18,wake,Rhythm,Lemon water,Completed at 2025-09-18T07:05:00Z');
     const notesLine = lines.find((line) => line.startsWith('2025-09-18,,Notes'));
     expect(notesLine).toBe('2025-09-18,,Notes,Care note,"Focus, steady intake"');
     const regionLine = lines.find((line) => line.startsWith('Region flags enabled'));
     expect(regionLine?.startsWith('Region flags enabled,None')).toBe(true);
     const cadenceLine = lines.find((line) => line.startsWith('Lab cadence (weeks)'));
     expect(cadenceLine).toBe('Lab cadence (weeks),8,,,,');
+    const checklistLine = lines.find((line) => line.startsWith('Daily rhythm completions'));
+    expect(checklistLine).toBe('Daily rhythm completions,1,,,,');
     const lastLabsLine = lines.find((line) => line.startsWith('Last labs recorded'));
     expect(lastLabsLine).toBe('Last labs recorded,2025-09-20,,,,');
     const nextLabsLine = lines.find((line) => line.startsWith('Next labs due'));

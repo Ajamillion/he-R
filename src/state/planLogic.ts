@@ -4,7 +4,8 @@ import type {
   MedicationDose,
   PegTitration,
   PlanProfile,
-  PrecipitatingFactorMap
+  PrecipitatingFactorMap,
+  RhythmChecklistEntry
 } from '../types';
 import { differenceInDays, isValidDateInput, shiftDate } from '../utils/date';
 
@@ -26,8 +27,26 @@ export const createEmptyLog = (date: string): DailyLog => ({
   hydration: [],
   stool: [],
   medications: [],
+  rhythmChecklist: [],
   notes: ''
 });
+
+const sanitizeChecklist = (entries?: RhythmChecklistEntry[]): RhythmChecklistEntry[] => {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  return entries
+    .filter(
+      (entry): entry is RhythmChecklistEntry =>
+        Boolean(entry && typeof entry.id === 'string' && typeof entry.completedAt === 'string')
+    )
+    .map((entry) => ({
+      id: entry.id,
+      time: entry.time,
+      task: entry.task,
+      completedAt: entry.completedAt
+    }));
+};
 
 type EnsureLogResult = {
   logs: DailyLog[];
@@ -43,7 +62,9 @@ export const ensureLogExists = (logs: DailyLog[], date: string): EnsureLogResult
         ...found,
         hydration: [...found.hydration],
         stool: [...found.stool],
-        medications: [...found.medications]
+        medications: [...found.medications],
+        rhythmChecklist: sanitizeChecklist(found.rhythmChecklist),
+        notes: typeof found.notes === 'string' ? found.notes : ''
       }
     };
   }
@@ -223,6 +244,9 @@ export const summarizeLogsForDates = (logs: DailyLog[], dates: string[]): Lookba
 const sortByTime = <T extends { time: string }>(entries: T[]) =>
   [...entries].sort((a, b) => a.time.localeCompare(b.time));
 
+const sortByCompletedAt = (entries: RhythmChecklistEntry[]) =>
+  [...entries].sort((a, b) => a.completedAt.localeCompare(b.completedAt));
+
 export type PlanExportSnapshot = {
   generatedAt: string;
   truthVersion: string;
@@ -240,12 +264,14 @@ export type PlanExportSnapshot = {
     hydrationEntries: number;
     stoolEntries: number;
     medicationEntries: number;
+    rhythmCompletions: number;
   };
   logs: {
     date: string;
     hydration: { time: string; ounces: number }[];
     stool: { time: string; bristol: number }[];
     medications: { time: string; name: string; amount: string }[];
+    rhythmChecklist: { id: string; time: string; task: string; completedAt: string }[];
     notes?: string;
   }[];
 };
@@ -283,12 +309,16 @@ export const buildPlanExportSnapshot = ({
       const hydration = sortByTime(log.hydration).map(({ id, ...rest }) => rest);
       const stool = sortByTime(log.stool).map(({ id, ...rest }) => rest);
       const medications = sortByTime(log.medications).map(({ id, ...rest }) => rest);
+      const rhythmChecklist = sortByCompletedAt(log.rhythmChecklist).map(
+        ({ id, time, task, completedAt }) => ({ id, time, task, completedAt })
+      );
       const trimmedNotes = log.notes.trim();
       return {
         date: log.date,
         hydration,
         stool,
         medications,
+        rhythmChecklist,
         ...(trimmedNotes ? { notes: trimmedNotes } : {})
       };
     });
@@ -297,9 +327,10 @@ export const buildPlanExportSnapshot = ({
     (acc, log) => ({
       hydrationEntries: acc.hydrationEntries + log.hydration.length,
       stoolEntries: acc.stoolEntries + log.stool.length,
-      medicationEntries: acc.medicationEntries + log.medications.length
+      medicationEntries: acc.medicationEntries + log.medications.length,
+      rhythmCompletions: acc.rhythmCompletions + log.rhythmChecklist.length
     }),
-    { hydrationEntries: 0, stoolEntries: 0, medicationEntries: 0 }
+    { hydrationEntries: 0, stoolEntries: 0, medicationEntries: 0, rhythmCompletions: 0 }
   );
 
   const sanitizedProfile: PlanProfile = {
@@ -366,6 +397,7 @@ export const buildPlanExportCsv = (snapshot: PlanExportSnapshot): string => {
   rows.push(['Body weight (kg)', snapshot.profile.weightKg.toString(), '', '', '']);
   rows.push(['Hydration goal (oz)', snapshot.profile.hydrationGoalOz.toString(), '', '', '']);
   rows.push(['Lab cadence (weeks)', snapshot.labCadenceWeeks.toString(), '', '', '']);
+  rows.push(['Daily rhythm completions', snapshot.totals.rhythmCompletions.toString(), '', '', '']);
   const lastLabsRecorded = snapshot.profile.lastLabDate ?? 'Not recorded';
   rows.push(['Last labs recorded', lastLabsRecorded, '', '', '']);
   if (isValidDateInput(snapshot.profile.lastLabDate)) {
@@ -412,6 +444,10 @@ export const buildPlanExportCsv = (snapshot: PlanExportSnapshot): string => {
 
     log.medications.forEach((entry) => {
       rows.push([log.date, entry.time, 'Medication', entry.name, entry.amount]);
+    });
+
+    log.rhythmChecklist.forEach((entry) => {
+      rows.push([log.date, entry.time, 'Rhythm', entry.task, `Completed at ${entry.completedAt}`]);
     });
 
     if (log.notes) {

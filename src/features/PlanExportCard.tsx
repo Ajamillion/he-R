@@ -155,6 +155,13 @@ export const PlanExportCard = ({ date }: PlanExportCardProps) => {
           <span className="stat-card__value">{snapshot.totals.medicationEntries}</span>
         </div>
         <div className="stat-card">
+          <span className="stat-card__label">Rhythm completions</span>
+          <span className="stat-card__value">{snapshot.totals.rhythmCompletions}</span>
+          <span className="badge">
+            {snapshot.totals.rhythmCompletions > 0 ? 'Checklist activity logged' : 'No completions yet'}
+          </span>
+        </div>
+        <div className="stat-card">
           <span className="stat-card__label">Active triggers</span>
           <span className="stat-card__value">{activeFactorCount}</span>
           <span className="badge">{noteCount > 0 ? `${noteCount} noted` : 'No notes yet'}</span>

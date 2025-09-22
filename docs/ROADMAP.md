@@ -50,6 +50,7 @@ Each phase lists primary outcomes, the major workstreams, and the go/no-go crite
 - Surface 7-day insights (hydration/stool/med adherence) and generate shareable JSON snapshots as building blocks for exports.
 - Introduce CSV/PDF export of daily logs for clinic visits; include share via secure email draft.
 - Layer a precipitating factor tracker with activity toggles, timestamped notes, and export integration.
+- Layer a daily rhythm checklist that records completion timestamps and surfaces adherence in exports.
 - Instrument usage analytics (privacy-preserving) and error logging.
 - Wrap the web app with Capacitor for iOS/Android test builds; configure push-ready notification channels (silent for now).
 
@@ -119,6 +120,7 @@ Each phase lists primary outcomes, the major workstreams, and the go/no-go crite
 3. **Accessibility audit** – Run linting (eslint-plugin-jsx-a11y) and manual keyboard testing; document remediation tasks.
 4. **CI hardening** – Configure GitHub Actions (or alternative) to run lint, type-check, Vitest, and Lighthouse CI on pull requests.
 5. **Documentation pack** – Publish API reference for PlanContext, state diagrams, JSON snapshot contract, and pilot onboarding guide.
+6. **Checklist insights** – Define streak logic and caregiver coaching for the new daily rhythm checklist, feeding the insights card roadmap.
 
 ## Measuring Success
 - **Adherence** – % of logged doses/hydration entries vs. prescribed plan.
